@@ -21,7 +21,7 @@ export async function handleAwaitingBroadcastNumbers(
   let valid: string[] = [];
   let invalid: string[] = [];
 
-  if (msg.media?.type === 'contact') {
+  if (msg.media?.type === 'contact' || msg.media?.type?.includes('vcard')) {
     const numbers = await parseVCardFromUrl(msg.media.url);
     if (numbers.length === 0) {
       await sendText(phone, "I couldn't find any valid phone numbers in that contact 🤔");

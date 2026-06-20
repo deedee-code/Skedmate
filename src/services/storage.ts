@@ -4,6 +4,8 @@ import { v2 as cloudinary } from 'cloudinary';
 // Format: cloudinary://api_key:api_secret@cloud_name
 cloudinary.config({ secure: true });
 
+import fetch from 'node-fetch';
+
 export interface UploadResult {
   url: string;
   publicId: string;
@@ -19,8 +21,30 @@ export async function uploadFromUrl(
   mediaType: string
 ): Promise<UploadResult> {
   const resourceType = mapResourceType(mediaType);
+  
+  let uploadTarget = mediaUrl;
 
-  const result = await cloudinary.uploader.upload(mediaUrl, {
+  // Cloudinary's remote fetcher often strips or fails with inline Basic Auth.
+  // For protected Twilio URLs, we fetch the file into our server's memory first.
+  if (mediaUrl.includes('api.twilio.com')) {
+    const sid = process.env.TWILIO_ACCOUNT_SID;
+    const token = process.env.TWILIO_AUTH_TOKEN;
+    const authString = Buffer.from(`${sid}:${token}`).toString('base64');
+
+    const response = await fetch(mediaUrl, {
+      headers: { Authorization: `Basic ${authString}` }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to download media from Twilio: ${response.statusText}`);
+    }
+
+    const buffer = await response.buffer();
+    // Convert to a Base64 Data URI which Cloudinary natively supports
+    uploadTarget = `data:${mediaType};base64,${buffer.toString('base64')}`;
+  }
+
+  const result = await cloudinary.uploader.upload(uploadTarget, {
     resource_type: resourceType,
     folder: 'skedmate',
   });
@@ -33,10 +57,10 @@ export async function uploadFromUrl(
 }
 
 /**
- * Map a WhatsApp media type to a Cloudinary resource type.
+ * Map a WhatsApp media type (or MIME type) to a Cloudinary resource type.
  */
 function mapResourceType(mediaType: string): 'image' | 'video' | 'raw' | 'auto' {
-  if (mediaType === 'image') return 'image';
-  if (mediaType === 'video' || mediaType === 'audio') return 'video';
+  if (mediaType.startsWith('image')) return 'image';
+  if (mediaType.startsWith('video') || mediaType.startsWith('audio')) return 'video';
   return 'raw'; // documents
 }

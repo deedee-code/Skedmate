@@ -37,16 +37,22 @@ export async function getState(
 
 /**
  * Set or update the conversation state for a phone number.
+ * If context is not provided, the existing context is preserved.
  */
 export async function setState(
   phone: string,
   state: ConversationStateValue,
-  context: ConversationContext = {}
+  context?: ConversationContext
 ): Promise<void> {
+  const updateData: any = { state };
+  if (context !== undefined) {
+    updateData.context = context as Prisma.InputJsonValue;
+  }
+
   await prisma.conversationState.upsert({
     where: { phone },
-    update: { state, context: context as Prisma.InputJsonValue },
-    create: { phone, state, context: context as Prisma.InputJsonValue },
+    update: updateData,
+    create: { phone, state, context: (context ?? {}) as Prisma.InputJsonValue },
   });
 }
 

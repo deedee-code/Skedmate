@@ -56,7 +56,7 @@ export async function handleAwaitingRecipient(
 ): Promise<void> {
   let recipient = '';
 
-  if (msg.media?.type === 'contact') {
+  if (msg.media?.type === 'contact' || msg.media?.type?.includes('vcard')) {
     const numbers = await parseVCardFromUrl(msg.media.url);
     if (numbers.length > 0) {
       recipient = numbers[0]; // Use the first valid number found

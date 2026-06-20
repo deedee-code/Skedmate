@@ -24,7 +24,6 @@ router.post(
 
     try {
       const body = req.body as Record<string, string>;
-      console.log('📬 [Webhook] Raw Body:', JSON.stringify(body, null, 2));
 
       const from = (body.From ?? '').replace('whatsapp:', '');
       const numMedia = parseInt(body.NumMedia ?? '0', 10);

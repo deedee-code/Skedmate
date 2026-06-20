@@ -38,7 +38,7 @@ export const broadcastQueue = new Queue(BROADCAST_QUEUE, {
  */
 export async function scheduleJob(scheduleId: string, sendAt: Date): Promise<void> {
   const delay = Math.max(0, sendAt.getTime() - Date.now());
-  await scheduleQueue.add('send', { scheduleId }, { delay, jobId: `schedule:${scheduleId}` });
+  await scheduleQueue.add('send', { scheduleId }, { delay, jobId: `schedule_${scheduleId}` });
 }
 
 /**
@@ -53,7 +53,7 @@ export async function scheduleBroadcastJob(
   sendAt: Date
 ): Promise<void> {
   const delay = Math.max(0, sendAt.getTime() - Date.now());
-  const jobId = `broadcast:${broadcastId}:${recipient}`;
+  const jobId = `broadcast_${broadcastId}_${recipient}`;
   await broadcastQueue.add('send', { broadcastId, recipient }, { delay, jobId });
 }
 
@@ -61,7 +61,7 @@ export async function scheduleBroadcastJob(
  * Cancel a scheduled job by its schedule ID.
  */
 export async function cancelJob(scheduleId: string): Promise<boolean> {
-  const job = await scheduleQueue.getJob(`schedule:${scheduleId}`);
+  const job = await scheduleQueue.getJob(`schedule_${scheduleId}`);
   if (!job) return false;
   await job.remove();
   return true;
