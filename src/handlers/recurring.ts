@@ -1,4 +1,4 @@
-import { sendText } from '../services/whatsapp.js';
+import { replyToUser } from '../services/whatsapp.js';
 import { setState, updateContext, getState } from '../utils/stateManager.js';
 import type { BufferedMessage } from '../services/buffer.js';
 
@@ -19,14 +19,14 @@ export async function handleAwaitingRecurrence(
   const valid = ['daily', 'weekly', 'monthly', 'custom'];
 
   if (!valid.includes(input)) {
-    await sendText(phone, `Please choose one of: daily, weekly, monthly, custom`);
+    await replyToUser(phone, `Please choose one of: daily, weekly, monthly, custom`);
     return;
   }
 
   if (input === 'custom') {
     await updateContext(phone, { recurrence: 'custom' });
     await setState(phone, 'AWAITING_CUSTOM_RECURRENCE');
-    await sendText(
+    await replyToUser(
       phone,
       'Describe your custom schedule — e.g. "every Monday and Thursday at 8am" or "every 2 weeks on Friday".\n\n(I\'ll do my best to set it up for you!)'
     );
@@ -35,7 +35,7 @@ export async function handleAwaitingRecurrence(
 
   await updateContext(phone, { recurrence: input });
   await setState(phone, 'AWAITING_TIME');
-  await sendText(
+  await replyToUser(
     phone,
     `Got it — ${input}! 🔁\n\nWhat time should it send each ${input === 'daily' ? 'day' : input === 'weekly' ? 'week' : 'month'}?\n\nExample: "9am" or "Friday at 3pm"`
   );
@@ -53,14 +53,14 @@ export async function handleAwaitingCustomRecurrence(
   const description = msg.text?.trim() ?? '';
 
   if (!description) {
-    await sendText(phone, 'Please describe your custom schedule.');
+    await replyToUser(phone, 'Please describe your custom schedule.');
     return;
   }
 
   // Store the custom description as the recurrence value
   await updateContext(phone, { recurrence: `custom:${description}` });
   await setState(phone, 'AWAITING_TIME');
-  await sendText(
+  await replyToUser(
     phone,
     `Got it! 📝 I've noted your custom schedule.\n\nWhen should the first one send?\n\nExample: "tomorrow 9am" or "next Monday at 8am"`
   );

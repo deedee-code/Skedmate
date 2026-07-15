@@ -1,5 +1,5 @@
 import prisma from '../db/prisma.js';
-import { sendText } from '../services/whatsapp.js';
+import { replyToUser } from '../services/whatsapp.js';
 import { setState } from '../utils/stateManager.js';
 import { buildMainMenu } from '../utils/formatter.js';
 import type { BufferedMessage } from '../services/buffer.js';
@@ -29,15 +29,15 @@ export async function handleAwaitingSettingsChoice(
 
   if (input === '1') {
     await setState(phone, 'AWAITING_NEW_TIMEZONE');
-    await sendText(
+    await replyToUser(
       phone,
       `What's your timezone? 🌍\n\nCommon options:\n${COMMON_TIMEZONES.join('\n')}\n\nOr type any valid timezone (e.g. America/Chicago).`
     );
   } else {
     const user = await prisma.user.findUnique({ where: { phone } });
-    await sendText(phone, 'Invalid option. Please reply with a number from the settings menu.');
+    await replyToUser(phone, 'Invalid option. Please reply with a number from the settings menu.');
     await setState(phone, 'AWAITING_SETTINGS_CHOICE');
-    await sendText(phone, `⚙️ Settings\n\n1️⃣  Change timezone\n\nReply with a number.`);
+    await replyToUser(phone, `⚙️ Settings\n\n1️⃣  Change timezone\n\nReply with a number.`);
   }
 }
 
@@ -52,7 +52,7 @@ export async function handleAwaitingNewTimezone(
 
   // Validate the timezone
   if (!isValidTimezone(input)) {
-    await sendText(
+    await replyToUser(
       phone,
       `"${input}" doesn't look like a valid timezone 🤔\n\nTry one of:\n${COMMON_TIMEZONES.join('\n')}`
     );
@@ -64,11 +64,11 @@ export async function handleAwaitingNewTimezone(
     data: { timezone: input },
   });
 
-  await sendText(phone, `✅ Timezone updated to ${input}!`);
+  await replyToUser(phone, `✅ Timezone updated to ${input}!`);
 
   const user = await prisma.user.findUnique({ where: { phone } });
   await setState(phone, 'MAIN_MENU');
-  await sendText(phone, buildMainMenu(user?.name ?? 'there'));
+  await replyToUser(phone, buildMainMenu(user?.name ?? 'there'));
 }
 
 /**

@@ -1,0 +1,1 @@
+Never use Promise.all() for sending messages. Always use a 4-12 second random delay between sends. Always check the daily quota before sending.

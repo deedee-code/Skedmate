@@ -1,5 +1,5 @@
 import prisma from '../db/prisma.js';
-import { sendText } from '../services/whatsapp.js';
+import { replyToUser } from '../services/whatsapp.js';
 import { setState } from '../utils/stateManager.js';
 import { cancelJob } from '../services/scheduler.js';
 import { buildMainMenu } from '../utils/formatter.js';
@@ -26,7 +26,7 @@ export async function handleAwaitingCancelId(
   });
 
   if (!schedule) {
-    await sendText(
+    await replyToUser(
       phone,
       `❌ I couldn't find a pending message with ID starting with "${input}".\n\nCheck your scheduled messages (option 5) and try again.`
     );
@@ -42,11 +42,11 @@ export async function handleAwaitingCancelId(
     data: { status: 'cancelled' },
   });
 
-  await sendText(
+  await replyToUser(
     phone,
     `✅ Done! Your scheduled message to ${schedule.recipient} has been cancelled.`
   );
 
   await setState(phone, 'MAIN_MENU');
-  await sendText(phone, buildMainMenu(user.name ?? 'there'));
+  await replyToUser(phone, buildMainMenu(user.name ?? 'there'));
 }

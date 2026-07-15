@@ -1,4 +1,4 @@
-import { sendText } from '../services/whatsapp.js';
+import { replyToUser } from '../services/whatsapp.js';
 import { setState } from '../utils/stateManager.js';
 import { buildMainMenu } from '../utils/formatter.js';
 import { getAIReply } from '../services/huggingface.js';
@@ -17,7 +17,7 @@ export async function handleMainMenu(
   switch (input) {
     case '1':
       await setState(phone, 'AWAITING_CONTENT', { mode: 'text' });
-      await sendText(
+      await replyToUser(
         phone,
         'Send your message now — text, file, image, or both together 👇\n\n(You can send text and media at the same time — I\'ll wait for both!)'
       );
@@ -25,7 +25,7 @@ export async function handleMainMenu(
 
     case '2':
       await setState(phone, 'AWAITING_CONTENT', { mode: 'media' });
-      await sendText(
+      await replyToUser(
         phone,
         'Send your file or media now 👇\n\n(You can include a caption too — just send them together!)'
       );
@@ -33,7 +33,7 @@ export async function handleMainMenu(
 
     case '3':
       await setState(phone, 'AWAITING_BROADCAST_NUMBERS');
-      await sendText(
+      await replyToUser(
         phone,
         'Send the numbers you want to broadcast to, separated by commas (or tap 📎 and share a Contact).\n\nExample: +2348012345678, +2348087654321'
       );
@@ -41,7 +41,7 @@ export async function handleMainMenu(
 
     case '4':
       await setState(phone, 'AWAITING_CONTENT', { mode: 'recurring' });
-      await sendText(
+      await replyToUser(
         phone,
         'Send the message you want to repeat 👇\n\n(Text, image, or both — I\'ll handle it!)'
       );
@@ -56,7 +56,7 @@ export async function handleMainMenu(
 
     case '6':
       await setState(phone, 'AWAITING_CANCEL_ID');
-      await sendText(
+      await replyToUser(
         phone,
         'Which message would you like to cancel?\n\nReply with the message ID (you can find it by viewing your scheduled messages — option 5).'
       );
@@ -64,7 +64,7 @@ export async function handleMainMenu(
 
     case '7':
       await setState(phone, 'AWAITING_SETTINGS_CHOICE');
-      await sendText(
+      await replyToUser(
         phone,
         `⚙️ Settings\n\n1️⃣  Change timezone\n\nReply with a number.`
       );
@@ -73,9 +73,9 @@ export async function handleMainMenu(
     default: {
       // Unknown input — hand off to HuggingFace
       const reply = await getAIReply(input);
-      await sendText(phone, reply);
+      await replyToUser(phone, reply);
       // Re-show the menu after AI reply
-      await sendText(phone, buildMainMenu(userName));
+      await replyToUser(phone, buildMainMenu(userName));
       break;
     }
   }

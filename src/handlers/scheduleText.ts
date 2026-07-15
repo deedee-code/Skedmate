@@ -1,5 +1,5 @@
 import prisma from '../db/prisma.js';
-import { sendText } from '../services/whatsapp.js';
+import { replyToUser } from '../services/whatsapp.js';
 import { setState, updateContext, getState } from '../utils/stateManager.js';
 import { scheduleJob } from '../services/scheduler.js';
 import { parseTime } from '../services/timeParser.js';
@@ -17,7 +17,7 @@ export async function handleAwaitingContent(
   msg: BufferedMessage
 ): Promise<void> {
   if (!msg.text && !msg.media) {
-    await sendText(phone, "I didn't receive anything 🤔 Please send your message — text, image, or both.");
+    await replyToUser(phone, "I didn't receive anything 🤔 Please send your message — text, image, or both.");
     return;
   }
 
@@ -32,7 +32,7 @@ export async function handleAwaitingContent(
       mediaType = msg.media.type;
     } catch (err) {
       console.error('[scheduleText] Cloudinary upload failed:', err);
-      await sendText(phone, '❌ Failed to upload your media. Please try again.');
+      await replyToUser(phone, '❌ Failed to upload your media. Please try again.');
       return;
     }
   }
@@ -44,7 +44,7 @@ export async function handleAwaitingContent(
   });
 
   await setState(phone, 'AWAITING_RECIPIENT');
-  await sendText(phone, "Who should receive this? Send their WhatsApp number (or tap 📎 and share a Contact).\n\nExample: +2348012345678");
+  await replyToUser(phone, "Who should receive this? Send their WhatsApp number (or tap 📎 and share a Contact).\n\nExample: +2348012345678");
 }
 
 /**
@@ -61,7 +61,7 @@ export async function handleAwaitingRecipient(
     if (numbers.length > 0) {
       recipient = numbers[0]; // Use the first valid number found
     } else {
-      await sendText(phone, "I couldn't find a valid phone number in that contact 🤔");
+      await replyToUser(phone, "I couldn't find a valid phone number in that contact 🤔");
       return;
     }
   } else {
@@ -70,7 +70,7 @@ export async function handleAwaitingRecipient(
   }
 
   if (!isValidPhone(recipient)) {
-    await sendText(
+    await replyToUser(
       phone,
       "That doesn't look like a valid phone number 🤔\n\nPlease send a number in international format or share a Contact via 📎"
     );
@@ -79,7 +79,7 @@ export async function handleAwaitingRecipient(
 
   await updateContext(phone, { recipient });
   await setState(phone, 'AWAITING_TIME');
-  await sendText(
+  await replyToUser(
     phone,
     'When should it be sent? 📅\n\nYou can say things like:\n• "tomorrow 9am"\n• "Friday at 3pm"\n• "in 2 hours"\n• "25 December at noon"'
   );
@@ -102,7 +102,7 @@ export async function handleAwaitingTime(
   const sendAt = parseTime(timeInput, timezone);
 
   if (!sendAt) {
-    await sendText(
+    await replyToUser(
       phone,
       "I couldn't understand that time 🤔 Try something like:\n• \"tomorrow 9am\"\n• \"next Friday at 3pm\"\n• \"in 2 hours\""
     );
@@ -136,7 +136,7 @@ export async function handleAwaitingTime(
       : 'media'
     : 'message';
 
-  await sendText(
+  await replyToUser(
     phone,
     `✅ Got it! I'll send your ${contentDesc} to ${ctx.recipient} on ${formattedTime}.\n\nID: ${schedule.id.slice(0, 8)} (save this if you want to cancel later)`
   );
@@ -157,5 +157,5 @@ export async function handleAwaitingTime(
   }
 
   await setState(phone, 'MAIN_MENU');
-  await sendText(phone, buildMainMenu(user?.name ?? 'there'));
+  await replyToUser(phone, buildMainMenu(user?.name ?? 'there'));
 }

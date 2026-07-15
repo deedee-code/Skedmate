@@ -1,7 +1,7 @@
 import prisma from '../db/prisma.js';
 import { getState, setState } from '../utils/stateManager.js';
 import { buildMainMenu } from '../utils/formatter.js';
-import { sendText } from '../services/whatsapp.js';
+import { replyToUser } from '../services/whatsapp.js';
 import { handleNewUser, handleAwaitingName } from '../handlers/onboarding.js';
 import { handleMainMenu } from '../handlers/mainMenu.js';
 import {
@@ -46,7 +46,7 @@ export async function processMessage(phone: string, msg: BufferedMessage): Promi
 
     // No state yet — show main menu
     if (!stateData) {
-      await sendText(phone, buildMainMenu(user.name ?? 'there'));
+      await replyToUser(phone, buildMainMenu(user.name ?? 'there'));
       return;
     }
 
@@ -58,7 +58,7 @@ export async function processMessage(phone: string, msg: BufferedMessage): Promi
     const inputLower = msg.text?.trim().toLowerCase() ?? '';
     if (['menu', 'back', 'cancel', '0'].includes(inputLower) && state !== 'MAIN_MENU') {
       await setState(phone, 'MAIN_MENU');
-      await sendText(phone, buildMainMenu(user.name ?? 'there'));
+      await replyToUser(phone, buildMainMenu(user.name ?? 'there'));
       return;
     }
 
@@ -83,7 +83,7 @@ export async function processMessage(phone: string, msg: BufferedMessage): Promi
           // Override next state to recurrence selection
           const { setState } = await import('../utils/stateManager.js');
           await setState(phone, 'AWAITING_RECURRENCE');
-          await sendText(
+          await replyToUser(
             phone,
             'How often should this repeat?\n\nReply:\ndaily\nweekly\nmonthly\ncustom'
           );
@@ -137,12 +137,12 @@ export async function processMessage(phone: string, msg: BufferedMessage): Promi
 
       default:
         // Fallback — reset to main menu
-        await sendText(phone, buildMainMenu(user.name ?? 'there'));
+        await replyToUser(phone, buildMainMenu(user.name ?? 'there'));
         break;
     }
   } catch (err) {
     console.error('[messageController] Unhandled error:', err);
-    await sendText(
+    await replyToUser(
       phone,
       "Oops, something went wrong on my end 😅 Please try again in a moment."
     );

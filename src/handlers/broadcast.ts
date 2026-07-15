@@ -1,5 +1,5 @@
 import prisma from '../db/prisma.js';
-import { sendText } from '../services/whatsapp.js';
+import { replyToUser } from '../services/whatsapp.js';
 import { setState, updateContext, getState } from '../utils/stateManager.js';
 import { scheduleBroadcastJob } from '../services/scheduler.js';
 import { parseTime } from '../services/timeParser.js';
@@ -24,7 +24,7 @@ export async function handleAwaitingBroadcastNumbers(
   if (msg.media?.type === 'contact' || msg.media?.type?.includes('vcard')) {
     const numbers = await parseVCardFromUrl(msg.media.url);
     if (numbers.length === 0) {
-      await sendText(phone, "I couldn't find any valid phone numbers in that contact 🤔");
+      await replyToUser(phone, "I couldn't find any valid phone numbers in that contact 🤔");
       return;
     }
     valid = numbers;
@@ -36,7 +36,7 @@ export async function handleAwaitingBroadcastNumbers(
   }
 
   if (valid.length === 0) {
-    await sendText(
+    await replyToUser(
       phone,
       "I couldn't find any valid phone numbers 🤔\n\nPlease send numbers separated by commas, or share a Contact via 📎"
     );
@@ -50,7 +50,7 @@ export async function handleAwaitingBroadcastNumbers(
 
   await updateContext(phone, { recipients: valid });
   await setState(phone, 'AWAITING_BROADCAST_CONFIRM');
-  await sendText(phone, OPT_IN_WARNING + warning);
+  await replyToUser(phone, OPT_IN_WARNING + warning);
 }
 
 /**
@@ -65,18 +65,18 @@ export async function handleAwaitingBroadcastConfirm(
   if (input === 'NO') {
     await setState(phone, 'MAIN_MENU');
     const user = await prisma.user.findUnique({ where: { phone } });
-    await sendText(phone, 'Broadcast cancelled. 👍');
-    await sendText(phone, buildMainMenu(user?.name ?? 'there'));
+    await replyToUser(phone, 'Broadcast cancelled. 👍');
+    await replyToUser(phone, buildMainMenu(user?.name ?? 'there'));
     return;
   }
 
   if (input !== 'YES') {
-    await sendText(phone, 'Please reply YES to continue or NO to cancel.');
+    await replyToUser(phone, 'Please reply YES to continue or NO to cancel.');
     return;
   }
 
   await setState(phone, 'AWAITING_BROADCAST_CONTENT');
-  await sendText(
+  await replyToUser(
     phone,
     'Now send your message — text, file, or both 👇\n\n(I\'ll wait a few seconds to group them together!)'
   );
@@ -90,7 +90,7 @@ export async function handleAwaitingBroadcastContent(
   msg: BufferedMessage
 ): Promise<void> {
   if (!msg.text && !msg.media) {
-    await sendText(phone, "I didn't receive anything 🤔 Please send your message — text, image, or both.");
+    await replyToUser(phone, "I didn't receive anything 🤔 Please send your message — text, image, or both.");
     return;
   }
 
@@ -104,7 +104,7 @@ export async function handleAwaitingBroadcastContent(
       mediaType = msg.media.type;
     } catch (err) {
       console.error('[broadcast] Cloudinary upload failed:', err);
-      await sendText(phone, '❌ Failed to upload your media. Please try again.');
+      await replyToUser(phone, '❌ Failed to upload your media. Please try again.');
       return;
     }
   }
@@ -116,7 +116,7 @@ export async function handleAwaitingBroadcastContent(
   });
 
   await setState(phone, 'AWAITING_BROADCAST_TIME');
-  await sendText(
+  await replyToUser(
     phone,
     'Send now or schedule for later?\n\nReply "now" or a time like "tomorrow 9am".'
   );
@@ -143,7 +143,7 @@ export async function handleAwaitingBroadcastTime(
   } else {
     const parsed = parseTime(input, timezone);
     if (!parsed) {
-      await sendText(
+      await replyToUser(
         phone,
         "I couldn't understand that time 🤔 Try \"now\" or something like \"tomorrow 9am\"."
       );
@@ -175,11 +175,11 @@ export async function handleAwaitingBroadcastTime(
   const timeLabel =
     input === 'now' ? 'right now' : formatDate(sendAt, timezone);
 
-  await sendText(
+  await replyToUser(
     phone,
     `✅ Broadcast queued for ${recipients.length} contact${recipients.length > 1 ? 's' : ''} at ${timeLabel}. 🚀`
   );
 
   await setState(phone, 'MAIN_MENU');
-  await sendText(phone, buildMainMenu(user?.name ?? 'there'));
+  await replyToUser(phone, buildMainMenu(user?.name ?? 'there'));
 }

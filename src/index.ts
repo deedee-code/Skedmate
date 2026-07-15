@@ -1,14 +1,17 @@
-import 'dotenv/config'; // Load environment variables first
+import 'dotenv/config';
 import express from 'express';
-import webhookRouter from './routes/webhook.js';
 import prisma from './db/prisma.js';
+import { restoreAllSessions } from './services/sessionManager.js';
+import qrRouter from './routes/qr.js';
 
 // Test database connection on startup
 prisma.$connect()
-  .then(() => {
+  .then(async () => {
     console.log('✅ Connected to the database successfully!');
+    // Restore any previously authenticated Baileys sessions from the DB
+    await restoreAllSessions();
   })
-  .catch((error) => {
+  .catch((error: unknown) => {
     console.error('❌ Database connection failed:', error);
   });
 
@@ -17,25 +20,23 @@ import('./jobs/sendMessage.js').catch((err) => {
   console.error('[Workers] Failed to start workers:', err);
 });
 
-
 const app = express();
 const PORT = process.env.PORT ?? 3500;
 
-// Twilio sends form-encoded bodies
-app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
 // Health check
 app.get('/', (_req, res) => {
   res.json({ status: 'ok', service: 'Skedmate', timestamp: new Date().toISOString() });
 });
 
-// WhatsApp webhook
-app.use('/webhook', webhookRouter);
+// WhatsApp session management (QR, logout, status)
+app.use('/session', qrRouter);
 
 app.listen(PORT, () => {
   console.log(`🚀 Skedmate running at http://localhost:${PORT}`);
-  console.log(`📲 Webhook endpoint: http://localhost:${PORT}/webhook`);
+  console.log(`📲 QR endpoint: POST http://localhost:${PORT}/session/connect`);
 });
 
 export default app;

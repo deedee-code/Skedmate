@@ -1,5 +1,5 @@
 import prisma from '../db/prisma.js';
-import { sendText } from '../services/whatsapp.js';
+import { replyToUser } from '../services/whatsapp.js';
 import { setState } from '../utils/stateManager.js';
 import { formatDate, truncate, buildMainMenu } from '../utils/formatter.js';
 
@@ -17,13 +17,13 @@ export async function handleViewSchedules(phone: string): Promise<void> {
   });
 
   if (schedules.length === 0) {
-    await sendText(phone, "You don't have any scheduled messages right now. 📭");
+    await replyToUser(phone, "You don't have any scheduled messages right now. 📭");
     await setState(phone, 'MAIN_MENU');
-    await sendText(phone, buildMainMenu(user.name ?? 'there'));
+    await replyToUser(phone, buildMainMenu(user.name ?? 'there'));
     return;
   }
 
-  const lines = schedules.map((s, i) => {
+  const lines = schedules.map((s: typeof schedules[number], i: number) => {
     const preview = s.textContent ? truncate(s.textContent, 40) : s.mediaType ?? 'media';
     const time = formatDate(s.sendAt, user.timezone);
     const recur = s.recurrence ? ` 🔁 ${s.recurrence}` : '';
@@ -35,7 +35,7 @@ export async function handleViewSchedules(phone: string): Promise<void> {
     lines.join('\n\n') +
     '\n\nTo cancel one, reply with option 6 from the main menu.';
 
-  await sendText(phone, message);
+  await replyToUser(phone, message);
   await setState(phone, 'MAIN_MENU');
-  await sendText(phone, buildMainMenu(user.name ?? 'there'));
+  await replyToUser(phone, buildMainMenu(user.name ?? 'there'));
 }

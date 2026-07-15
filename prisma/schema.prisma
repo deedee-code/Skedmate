@@ -10,13 +10,33 @@ datasource db {
 }
 
 model User {
-  id         String      @id @default(uuid())
-  phone      String      @unique
-  name       String?
-  timezone   String      @default("Africa/Lagos")
-  createdAt  DateTime    @default(now())
-  schedules  Schedule[]
-  broadcasts Broadcast[]
+  id               String      @id @default(uuid())
+  phone            String      @unique
+  name             String?
+  timezone         String      @default("Africa/Lagos")
+  createdAt        DateTime    @default(now())
+  // Anti-ban daily quota tracking
+  dailyMessageCount Int        @default(0)
+  dailyQuotaDate   DateTime?
+  schedules        Schedule[]
+  broadcasts       Broadcast[]
+  waSessions       WhatsAppSession[]
+}
+
+/// Stores Baileys multi-file auth state in the database.
+/// Each row is one "file" that Baileys would normally write to disk.
+model WhatsAppSession {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// The auth key name, e.g. "creds", "app-state-sync-key-XXXXXX", "pre-key-1", etc.
+  keyType   String
+  /// The serialised JSON value for that key
+  data      Json
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, keyType])
+  @@index([userId])
 }
 
 model Schedule {

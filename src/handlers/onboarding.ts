@@ -1,5 +1,5 @@
 import prisma from '../db/prisma.js';
-import { sendText } from '../services/whatsapp.js';
+import { replyToUser } from '../services/whatsapp.js';
 import { setState } from '../utils/stateManager.js';
 import { buildMainMenu } from '../utils/formatter.js';
 import type { BufferedMessage } from '../services/buffer.js';
@@ -30,7 +30,7 @@ export async function handleNewUser(phone: string): Promise<void> {
     create: { phone },
   });
 
-  await sendText(phone, INTRO_MESSAGE);
+  await replyToUser(phone, INTRO_MESSAGE);
   await setState(phone, 'AWAITING_NAME');
 }
 
@@ -60,7 +60,7 @@ export async function handleAwaitingName(phone: string, msg: BufferedMessage): P
   const name = extractName(rawInput);
 
   if (!name || name.length < 2) {
-    await sendText(phone, "I didn't catch that — what's your name? 😊");
+    await replyToUser(phone, "I didn't catch that — what's your name? 😊");
     return;
   }
 
@@ -71,7 +71,7 @@ export async function handleAwaitingName(phone: string, msg: BufferedMessage): P
     create: { phone, name },
   });
 
-  await sendText(phone, `Nice to meet you, ${name}! 🎉`);
+  await replyToUser(phone, `Nice to meet you, ${name}! 🎉`);
   await setState(phone, 'MAIN_MENU');
-  await sendText(phone, buildMainMenu(name));
+  await replyToUser(phone, buildMainMenu(name));
 }
