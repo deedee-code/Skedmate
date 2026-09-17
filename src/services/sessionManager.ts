@@ -31,6 +31,8 @@ interface SessionEntry {
 }
 
 const sessions = new Map<string, SessionEntry>();
+// Track reconnect attempts per-user for exponential backoff
+const reconnectAttempts = new Map<string, number>();
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -89,6 +91,8 @@ export async function connectUser(
     if (connection === 'open') {
       const entry = sessions.get(userId);
       if (entry) entry.connecting = false;
+      // reset reconnect attempts after a successful open
+      reconnectAttempts.delete(userId);
       console.log(`[SessionManager] ✅ User ${userId} connected`);
       onOpen?.();
     }
@@ -106,9 +110,24 @@ export async function connectUser(
       if (loggedOut) {
         // Wipe the stored credentials so the user has to re-scan next time
         await deleteAuthState(userId);
+        reconnectAttempts.delete(userId);
       } else {
-        // Any other disconnect reason → reconnect after a short back-off
-        const delay = 3000 + Math.random() * 2000;
+        // Exponential backoff on reconnect attempts to reduce hammering
+        const prev = reconnectAttempts.get(userId) ?? 0;
+        const attempt = prev + 1;
+        reconnectAttempts.set(userId, attempt);
+
+        const baseDelay = 2000; // 2s
+        const maxDelay = 60_000; // 1 minute
+        // exponential backoff with jitter
+        const backoff = Math.min(baseDelay * Math.pow(2, attempt - 1), maxDelay);
+        const jitter = Math.random() * 1000;
+        const delay = backoff + jitter;
+
+        console.log(
+          `[SessionManager] Reconnecting user ${userId} in ${Math.round(delay)}ms (attempt ${attempt})`
+        );
+
         setTimeout(() => connectUser(userId, onQR, onOpen), delay);
       }
     }
@@ -124,8 +143,24 @@ export async function connectUser(
 
       try {
         const jid = msg.key.remoteJid ?? '';
+        // If we don't have a remoteJid, log the raw message for debugging and skip
+        if (!jid) {
+          try {
+            const safe = {
+              key: msg.key,
+              messageType: Object.keys(msg.message ?? {}).slice(0, 3),
+            };
+            console.warn('[SessionManager] incoming message missing remoteJid, raw:', JSON.stringify(safe));
+          } catch (_) {
+            console.warn('[SessionManager] incoming message missing remoteJid (unable to stringify)');
+          }
+          continue;
+        }
+
         // Strip @s.whatsapp.net → plain E.164 number
         const senderPhone = jid.replace('@s.whatsapp.net', '').replace(/[^0-9+]/g, '');
+
+        console.log(`[SessionManager] incoming message from ${senderPhone} type=${type}`);
 
         const textContent =
           msg.message.conversation ??

@@ -128,7 +128,7 @@ Call the connect endpoint with the user's UUID:
 ```bash
 curl -s -X POST http://localhost:3500/session/connect \
   -H "Content-Type: application/json" \
-  -d '{"userId": "paste-uuid-here"}' | python -m json.tool
+  -d '{"userId":"a1a23ab5-d165-4c3d-a5e9-96e5a26e7a4a","force":true}' | python3 -m json.tool
 ```
 
 The response will look like:

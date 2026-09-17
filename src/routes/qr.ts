@@ -34,10 +34,15 @@ router.post('/connect', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  // Already connected?
+  // Already connected? allow forcing a reconnect by passing `force: true` in body
+  const { force } = req.body as { force?: boolean };
   if (getSocket(userId)) {
-    res.json({ status: 'already_connected' });
-    return;
+    if (force) {
+      await logoutUser(userId).catch(() => { /* ignore logout errors and continue */ });
+    } else {
+      res.json({ status: 'already_connected' });
+      return;
+    }
   }
 
   // Start the connection and capture the first QR code via a promise
@@ -49,10 +54,11 @@ router.post('/connect', async (req: Request, res: Response): Promise<void> => {
     qrReject = reject;
   });
 
-  // 30-second timeout in case QR never arrives
+  // Configurable timeout (ms) for QR generation via `QR_TIMEOUT_MS` env var
+  const qrTimeoutMs = Number(process.env.QR_TIMEOUT_MS ?? '30000');
   const timeout = setTimeout(() => {
     qrReject?.(new Error('QR code generation timed out'));
-  }, 30_000);
+  }, qrTimeoutMs);
 
   connectUser(
     userId,
@@ -115,3 +121,28 @@ router.get('/status', async (req: Request, res: Response): Promise<void> => {
 });
 
 export default router;
+
+// ─── POST /session/disconnect ───────────────────────────────────────────────
+// Force-close the socket but keep auth state (useful to re-scan without wiping creds)
+router.post('/disconnect', async (req: Request, res: Response): Promise<void> => {
+  const { userId } = req.body as { userId?: string };
+
+  if (!userId) {
+    res.status(400).json({ error: 'userId is required' });
+    return;
+  }
+
+  const sock = getSocket(userId);
+  if (!sock) {
+    res.json({ status: 'no_active_session' });
+    return;
+  }
+
+  try {
+    // Close socket without deleting auth rows so the next connect can re-use creds
+    await sock.logout?.().catch(() => { /* ignore logout errors */ });
+    res.json({ status: 'disconnected' });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message ?? 'unknown' });
+  }
+});

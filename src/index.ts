@@ -1,8 +1,18 @@
 import 'dotenv/config';
 import express from 'express';
+// Optionally silence noisy trace logs from dependencies (e.g., Baileys)
+if (process.env.SILENCE_BAILEYS_TRACE === 'true') {
+  // Override console.trace early so downstream libs don't print stack traces
+  // Use a no-op to avoid cluttering the terminal during development.
+  // Set env: `SILENCE_BAILEYS_TRACE=true` when starting the server.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (console as any).trace = () => {};
+}
 import prisma from './db/prisma.js';
 import { restoreAllSessions } from './services/sessionManager.js';
 import qrRouter from './routes/qr.js';
+import messagesRouter from './routes/messages.js';
+import devRouter from './routes/dev.js';
 
 // Test database connection on startup
 prisma.$connect()
@@ -33,6 +43,10 @@ app.get('/', (_req, res) => {
 
 // WhatsApp session management (QR, logout, status)
 app.use('/session', qrRouter);
+// Message sending via server session
+app.use('/messages', messagesRouter);
+// Dev-only helpers (disabled unless ALLOW_DEV_ENDPOINTS=true)
+app.use('/dev', devRouter);
 
 app.listen(PORT, () => {
   console.log(`🚀 Skedmate running at http://localhost:${PORT}`);
